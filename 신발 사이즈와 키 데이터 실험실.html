@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데이터 분석 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#070b16; --bg2:#0c1324; --panel:#101a30; --panel2:#14203a; --line:#1f2c4a; --line2:#2a3a5e;
+  --text:#e8eefc; --sub:#9db0d4; --muted:#6b7da3;
+  --a:#ff7f5c; --a2:#ffab52; --aSoft:rgba(255,127,92,.12); --aLine:rgba(255,127,92,.35);
+  --b:#22d3b0; --b2:#2fd0ee; --bSoft:rgba(34,211,176,.12); --bLine:rgba(34,211,176,.35);
+  --err:#ff4d6d; --errSoft:rgba(255,77,109,.22); --warn:#facc15; --warnSoft:rgba(250,204,21,.16);
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:"Noto Sans KR",system-ui,sans-serif; color:var(--text); line-height:1.55;
+  background:radial-gradient(1200px 600px at 10% -10%,rgba(255,127,92,.08),transparent 60%),
+             radial-gradient(1200px 600px at 95% -10%,rgba(34,211,176,.08),transparent 60%),var(--bg);
+  min-height:100vh;
+}
+.wrap{max-width:1360px;margin:0 auto;padding:28px 22px 60px}
+button,input,select{font-family:inherit}
+.hidden{display:none!important}
+.num{font-family:var(--mono)}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.badge{display:inline-flex;align-items:center;gap:8px;font:700 11px/1 var(--mono);letter-spacing:.18em;color:var(--sub);
+  border:1px solid var(--line2);border-radius:99px;padding:7px 12px;background:rgba(255,255,255,.02)}
+.badge i{width:7px;height:7px;border-radius:50%;background:var(--b);box-shadow:0 0 10px var(--b)}
+h1{font-size:clamp(26px,3.4vw,40px);font-weight:900;margin:12px 0 4px;letter-spacing:-.02em}
+h1 .va{color:var(--a)} h1 .vb{color:var(--b)}
+.lead{color:var(--sub);margin:0;font-size:15px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{border:1px solid var(--line2);background:var(--panel);color:var(--text);padding:11px 16px;border-radius:12px;
+  font-size:14px;font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;gap:8px;align-items:center}
+.btn:hover{border-color:#3d5185;background:var(--panel2);transform:translateY(-1px)}
+.btn.primary{border:none;color:#06121a;background:linear-gradient(90deg,var(--a2),var(--b2))}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:8px 0 22px}
+.step{background:rgba(16,26,48,.6);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--sub)}
+.step b{color:var(--text);font-family:var(--mono);margin-right:6px}
+
+/* summary */
+.summary{border-radius:18px;padding:22px;margin-bottom:20px;border:1px solid var(--line2);
+  background:linear-gradient(120deg,rgba(255,127,92,.10),rgba(16,26,48,.9) 35%,rgba(16,26,48,.9) 65%,rgba(34,211,176,.12))}
+.summary h2{margin:0 0 4px;font-size:20px}
+.summary .sub{color:var(--sub);font-size:13px;margin:0 0 16px}
+.sgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:12px}
+.scard{background:rgba(7,11,22,.55);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.scard .k{font-size:12px;color:var(--muted);font-weight:700}
+.scard .v{font:700 22px/1.3 var(--mono);margin-top:6px}
+.scard .v small{font-size:13px;color:var(--sub);font-family:"Noto Sans KR"}
+.arrow{color:var(--muted);margin:0 6px}
+.ca{color:var(--a)} .cb{color:var(--b)} .cup{color:#7ef0c5} .cdown{color:var(--err)}
+.verdict{margin-top:14px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.03);border-left:4px solid var(--b);font-size:15px}
+.verdict b{color:#fff}
+
+/* switch */
+.switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:700;user-select:none}
+.switch{position:relative}
+.switch input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.switch input:focus-visible + .tr{outline:2px solid var(--b2);outline-offset:2px}
+.switch .tr{width:42px;height:24px;border-radius:99px;background:#26324f;position:relative;transition:.2s;flex:none}
+.switch .tr::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#cfd8ee;transition:.2s}
+.switch input:checked + .tr{background:linear-gradient(90deg,var(--a2),var(--b2))}
+.switch input:checked + .tr::after{left:21px;background:#fff}
+.side-A .switch input:checked + .tr{background:var(--a)}
+.side-B .switch input:checked + .tr{background:var(--b)}
+
+/* panels */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.panel{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:18px;padding:18px;position:relative;overflow:hidden;min-width:0}
+.panel::before{content:"";position:absolute;inset:0 0 auto 0;height:3px}
+.side-A::before{background:linear-gradient(90deg,var(--a),var(--a2))}
+.side-B::before{background:linear-gradient(90deg,var(--b),var(--b2))}
+.phead{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.tag{font:700 11px/1 var(--mono);letter-spacing:.12em;padding:7px 9px;border-radius:8px;white-space:nowrap}
+.side-A .tag{background:var(--aSoft);color:var(--a);border:1px solid var(--aLine)}
+.side-B .tag{background:var(--bSoft);color:var(--b);border:1px solid var(--bLine)}
+.phead h2{margin:0;font-size:19px}
+.phead p{margin:2px 0 0;color:var(--sub);font-size:13px}
+
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;
+  border:2px dashed var(--line2);border-radius:14px;padding:22px 14px;cursor:pointer;transition:.15s;background:rgba(7,11,22,.35)}
+.drop input{display:none}
+.drop .ic{font-size:26px}
+.drop .t1{font-weight:700;font-size:14px}
+.drop .t2{color:var(--muted);font-size:12px;font-family:var(--mono)}
+.side-A .drop:hover,.side-A .drop.over{border-color:var(--a);background:var(--aSoft)}
+.side-B .drop:hover,.side-B .drop.over{border-color:var(--b);background:var(--bSoft)}
+.drop.loaded{padding:12px 14px;flex-direction:row;gap:10px;justify-content:flex-start;text-align:left}
+.drop.loaded .ic{font-size:20px}
+.drop.loaded .t2{margin-left:auto}
+.fileErr{color:var(--err);font-size:13px;margin-top:8px}
+
+.section-t{font-size:13px;font-weight:700;color:var(--sub);margin:18px 0 8px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cols label{font-size:12px;color:var(--muted);font-weight:700;display:block;margin-bottom:5px}
+.cols select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:10px;padding:9px 10px;font-size:14px}
+.cols select:focus{outline:2px solid var(--b2);outline-offset:1px}
+.colwarn{color:var(--warn);font-size:12px;margin-top:6px}
+
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--sub);font-weight:500}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.tablewrap{max-height:250px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 10px;border-bottom:1px solid #16213a;white-space:nowrap;text-align:left}
+th{position:sticky;top:0;background:#111b32;color:var(--sub);font-weight:700;z-index:1}
+th .ax{font:700 10px/1 var(--mono);padding:3px 5px;border-radius:5px;margin-left:5px;vertical-align:1px}
+.side-A th .ax{background:var(--a);color:#1a0b05} .side-B th .ax{background:var(--b);color:#03201a}
+td.rn,th.rn{color:var(--muted);font-family:var(--mono);font-size:11.5px;width:1%}
+td.n{font-family:var(--mono)}
+td.bad{background:var(--errSoft);color:#ffd0d8;box-shadow:inset 0 0 0 1px rgba(255,77,109,.6)}
+td.bad::after{content:" ⚠";font-size:11px}
+td.out{background:var(--warnSoft);color:#fff1a8;box-shadow:inset 0 0 0 1px rgba(250,204,21,.55)}
+tr.excl td:not(.bad){opacity:.45}
+.more{font-size:12px;color:var(--muted);padding:8px 10px}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.st{background:rgba(7,11,22,.5);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.st .k{font-size:11.5px;color:var(--muted);font-weight:700}
+.st .v{font:700 20px/1.25 var(--mono);margin-top:3px}
+.side-A .hl{color:var(--a)} .side-B .hl{color:var(--b)}
+.v.red{color:var(--err)} .v.yel{color:var(--warn)}
+.interp{margin:10px 0 0;padding:12px 14px;border-radius:12px;font-size:14px;background:rgba(255,255,255,.03)}
+.side-A .interp{border-left:3px solid var(--a)} .side-B .interp{border-left:3px solid var(--b)}
+
+.chartbox{position:relative;height:360px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px}
+.cnote{font-size:12.5px;color:var(--warn);margin-top:8px}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--muted);font-size:14px;text-align:center}
+
+/* predict */
+.predict{margin-top:22px;border:1px solid var(--line2);border-radius:18px;padding:22px;background:linear-gradient(180deg,#111c34,var(--bg2))}
+.predict h2{margin:0 0 4px;font-size:20px}
+.predict .sub{color:var(--sub);font-size:13px;margin:0 0 16px}
+.pin{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pin input{width:180px;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;font:700 20px var(--mono)}
+.pin input:focus{outline:2px solid var(--b2)}
+.pin .unit{color:var(--sub);font-weight:700}
+.pnote{font-size:13px;margin-top:10px;color:var(--warn)}
+.pres{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;align-items:stretch}
+.pc{border-radius:14px;padding:16px 18px;border:1px solid var(--line)}
+.pc.A{background:var(--aSoft);border-color:var(--aLine)} .pc.B{background:var(--bSoft);border-color:var(--bLine)}
+.pc .k{display:inline-block;font-size:19px;font-weight:800;padding:5px 14px;border-radius:999px;border:2px solid currentColor}
+.pc .k small{font-size:13px;font-weight:600;opacity:.8;margin-left:4px}
+.pc.A .k{color:var(--a)} .pc.B .k{color:var(--b)}
+.pc .big{font:700 34px/1.2 var(--mono);margin:6px 0}
+.pc .big small{font-size:15px;color:var(--sub)}
+.pc .how{font-size:12.5px;color:var(--sub);font-family:var(--mono)}
+.pc .ok{font-size:13px;margin-top:8px}
+
+/* clean log & help */
+.cleanlog{margin-top:22px;border:1px solid var(--line);border-radius:18px;padding:20px;background:var(--bg2)}
+.cleanlog h2{margin:0 0 4px;font-size:18px}
+.cleanlog .sub{color:var(--sub);font-size:13px;margin:0 0 12px}
+.cleanlog table td,.cleanlog table th{white-space:normal}
+.tagp{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:99px}
+.tagp.fix{background:var(--bSoft);color:var(--b)} .tagp.del{background:var(--errSoft);color:#ff9fb0}
+footer{margin-top:30px;color:var(--muted);font-size:12px;text-align:center}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:#1b2745;border:1px solid var(--line2);
+  padding:12px 18px;border-radius:12px;font-size:14px;transition:.25s;z-index:50;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:1000px){
+  .grid2,.pres{grid-template-columns:1fr}
+  .sgrid{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .sgrid,.steps{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <span class="badge"><i></i>DATA SCIENCE LAB · 신월중 데이터 실험실</span>
+      <h1>신발 사이즈와 키의 관계성 알아보기 <br><span class="va">데이터 가공 전</span> vs <span class="vb">가공 후</span> 비교 하기</h1>
+      <p class="lead">이상치·결측치를 처리하면 결과가 어떻게 달라질까요?</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="btnSample">🧪 비교용 샘플 데이터 한 번에 불러오기</button>
+      <button class="btn" id="btnTemplate">📄 엑셀 양식 다운로드</button>
+      <button class="btn ghost" id="btnReset">↺ 처음부터 다시</button>
+    </div>
+  </header>
+
+  <div class="steps">
+    <div class="step"><b>01</b>왼쪽에 원본, 오른쪽에 가공한 파일 올리기</div>
+    <div class="step"><b>02</b>X축(신발 사이즈)·Y축(키) 열 고르기</div>
+    <div class="step"><b>03</b>두 그래프 비교하기</div>
+    <div class="step"><b>04</b>자신의 신발 사이즈로 키 예측해 보기</div>
+  </div>
+
+  <section class="summary hidden" id="summary"></section>
+
+  <main class="grid2" id="panels"></main>
+
+  <section class="predict" id="predict">
+    <h2>🔮 자신의 키 예측 비교 체험</h2>
+    <p class="sub">신발 사이즈를 넣으면 두 추세선이 각각 키를 예측해요. (그래프에 ★로 표시)</p>
+    <div class="pin">
+      <input type="number" id="myShoe" placeholder="예: 250" inputmode="decimal">
+      <span class="unit" id="myShoeUnit">mm</span>
+      <button class="btn primary" id="btnPredict">예측하기</button>
+      <button class="btn ghost" id="btnClearPredict">지우기</button>
+    </div>
+    <div class="pnote hidden" id="pnote"></div>
+    <div class="pres" id="pres">
+      <div class="pc A"><div class="k">정제 전 <small>(원본 데이터 A)</small></div><div class="big" id="predA">—</div><div class="how" id="howA">데이터 A를 올려 주세요</div><div class="ok" id="okA"></div></div>
+      <div class="pc B"><div class="k">정제 후 <small>(데이터 B)</small></div><div class="big" id="predB">—</div><div class="how" id="howB">데이터 B를 올려 주세요</div><div class="ok" id="okB"></div></div>
+    </div>
+  </section>
+
+  <section class="cleanlog hidden" id="cleanlog">
+    <h2>🧹 샘플 데이터는 이렇게 가공했어요</h2>
+    <p class="sub">원본의 문제를 고치거나, 고칠 수 없으면 삭제했어요.</p>
+    <div class="tablewrap" style="max-height:none">
+      <table>
+        <thead><tr><th>번호</th><th>원본 값</th><th>무엇이 문제였나요?</th><th>가공 방법</th></tr></thead>
+        <tbody id="cleanBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer><span style="color:#ff9fb0">빨간 칸</span> = 계산에서 빠진 값 · <span style="color:#fff1a8">노란 칸</span> = 이상치 의심</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 샘플 데이터 ================= */
+const SAMPLE_CLEAN = [
+  [230,152],[245,161],[255,166],[240,158],[265,172],[235,155],[250,163],[270,175],[225,150],[260,170],
+  [245,159],[255,168],[240,160],[275,178],[230,156],[250,165],[265,171],[235,153],[260,167],[280,181],
+  [220,148],[250,162],[245,164],[270,176],[240,157],[255,164],[260,172],[235,158],[285,182],[250,167]
+];
+const HEAD = ["번호","이름","신발사이즈(mm)","키(cm)"];
+// 원본에 넣을 오류: [번호, 열(0=신발,1=키), 원본값, 문제, 정제방법, 정제후 값(null=행 삭제)]
+const SAMPLE_ISSUES = [
+  [3, 1, 1660, "키에 0이 하나 더 들어간 오타 (1660cm는 불가능)", "166으로 고침", 166],
+  [8, 0, 2700, "신발 사이즈에 0이 하나 더 들어간 오타", "270으로 고침", 270],
+  [12,0, 25.5, "mm가 아니라 cm 단위로 적음", "255(mm)로 단위 통일", 255],
+  [14,1, "?", "키를 몰라서 물음표를 적음", "알 수 없어서 행 삭제", null],
+  [17,1, "", "키 칸이 비어 있음", "알 수 없어서 행 삭제", null],
+  [19,0, "", "신발 사이즈 칸이 비어 있음", "알 수 없어서 행 삭제", null],
+  [21,1, "백사십팔", "숫자 대신 한글로 적음", "148로 숫자 변환", 148],
+  [24,0, "270mm", "숫자 뒤에 단위 글자가 붙어 있음", "270으로 숫자만 남김", 270],
+  [26,1, 16.4, "소수점 위치가 잘못됨", "164로 고침", 164],
+];
+function buildSample(){
+  const raw=[HEAD], clean=[HEAD];
+  SAMPLE_CLEAN.forEach((p,i)=>{
+    const no=i+1, name="학생"+String(no).padStart(2,"0");
+    const r=[no,name,p[0],p[1]];
+    const iss=SAMPLE_ISSUES.find(s=>s[0]===no);
+    let keep=true;
+    if(iss){ r[2+iss[1]]=iss[2]; if(iss[5]===null) keep=false; }
+    raw.push(r);
+    if(keep) clean.push([no,name,p[0],p[1]]);
+  });
+  return {raw,clean};
+}
+
+/* ================= 상태 ================= */
+const SIDES={
+  A:{key:"A",tag:"DATA A",title:"정제 전 (원본)",desc:"결측치, 이상치가 섞인 그대로의 데이터",
+     pt:"#ff7f5c",ptFill:"rgba(255,127,92,.75)",line:"#ffab52"},
+  B:{key:"B",tag:"DATA B",title:"정제 후",desc:"결측치, 이상치를 삭제하여 가공한 데이터",
+     pt:"#22d3b0",ptFill:"rgba(34,211,176,.75)",line:"#2fd0ee"}
+};
+const S={A:null,B:null,myX:null};
+const charts={A:null,B:null};
+const trendOn={A:true,B:true};
+
+/* ================= 유틸 ================= */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function parseNum(v){
+  if(typeof v==="number") return isFinite(v)?v:null;
+  if(typeof v!=="string") return null;
+  const t=v.trim().replace(/,/g,"");
+  return /^[-+]?\d+(\.\d+)?$/.test(t)?Number(t):null;
+}
+function fmt(v,d=1){ if(v==null||!isFinite(v)) return "—"; return Number(v.toFixed(d)).toLocaleString("ko-KR",{maximumFractionDigits:d}); }
+function short(h){ return String(h).replace(/\s*\(.*?\)\s*/g,"").trim()||String(h); }
+function unitOf(h){ const m=String(h).match(/\(([^)]+)\)/); return m?m[1]:""; }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2600); }
+function quantile(sorted,q){ const p=(sorted.length-1)*q, lo=Math.floor(p), hi=Math.ceil(p); return sorted[lo]+(sorted[hi]-sorted[lo])*(p-lo); }
+function iqrBounds(arr){
+  if(arr.length<4) return [-Infinity,Infinity];
+  const s=[...arr].sort((a,b)=>a-b), q1=quantile(s,.25), q3=quantile(s,.75), k=1.5*(q3-q1);
+  return [q1-k,q3+k];
+}
+
+/* ================= 패널 만들기 ================= */
+function panelHTML(sd){
+  const k=sd.key;
+  return `<section class="panel side-${k}" id="panel${k}">
+    <div class="phead"><span class="tag">${sd.tag}</span><div><h2>${sd.title}</h2><p>${sd.desc}</p></div></div>
+    <label class="drop" id="drop${k}">
+      <input type="file" id="file${k}" accept=".xlsx,.xls,.csv">
+      <span class="ic">${k==="A"?"📥":"✨"}</span>
+      <span class="t1" id="dropT${k}">파일을 끌어다 놓거나 클릭하세요</span>
+      <span class="t2" id="dropS${k}">.xlsx · .xls · .csv</span>
+    </label>
+    <div class="fileErr hidden" id="ferr${k}"></div>
+    <div class="hidden" id="body${k}">
+      <div class="section-t">① 분석할 열 고르기</div>
+      <div class="cols">
+        <div><label>X축 (원인 · 예: 신발 사이즈)</label><select id="xs${k}"></select></div>
+        <div><label>Y축 (결과 · 예: 키)</label><select id="ys${k}"></select></div>
+      </div>
+      <div class="colwarn hidden" id="cw${k}">X축과 Y축이 같은 열이에요. 서로 다른 열을 골라 주세요.</div>
+
+      <div class="section-t">② 데이터 미리보기 <span class="legend"><span><i style="background:var(--errSoft);border:1px solid var(--err)"></i>오류(계산 제외)</span><span><i style="background:var(--warnSoft);border:1px solid var(--warn)"></i>이상치 의심</span></span></div>
+      <div class="tablewrap" id="tw${k}"></div>
+
+      <div class="section-t">③ 분석 결과</div>
+      <div class="stats" id="stats${k}"></div>    </div>
+    <div class="section-t">④ 점 그래프 <label class="switch"><input type="checkbox" id="tr${k}" checked><span class="tr"></span>추세선 보기</label></div>
+    <div class="chartbox"><canvas id="cv${k}"></canvas><div class="empty" id="ce${k}"><span style="font-size:30px">📊</span>파일을 올리면 그래프가 나타나요</div></div>
+    <div class="cnote hidden" id="cn${k}"></div>
+  </section>`;
+}
+$("panels").innerHTML=panelHTML(SIDES.A)+panelHTML(SIDES.B);
+
+["A","B"].forEach(k=>{
+  const drop=$("drop"+k), inp=$("file"+k);
+  inp.addEventListener("change",e=>{ if(e.target.files[0]) readFile(k,e.target.files[0]); inp.value=""; });
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+  drop.addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) readFile(k,f); });
+  $("xs"+k).addEventListener("change",e=>{S[k].x=+e.target.value; refresh(k);});
+  $("ys"+k).addEventListener("change",e=>{S[k].y=+e.target.value; refresh(k);});
+  $("tr"+k).addEventListener("change",e=>{trendOn[k]=e.target.checked; drawChart(k);});
+});
+
+/* ================= 파일 읽기 ================= */
+function readFile(k,file){
+  const ferr=$("ferr"+k); ferr.classList.add("hidden");
+  if(typeof XLSX==="undefined"){ showErr(k,"엑셀 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요."); return; }
+  const ext=file.name.split(".").pop().toLowerCase();
+  if(!["xlsx","xls","csv"].includes(ext)){ showErr(k,"엑셀(.xlsx, .xls) 또는 CSV(.csv) 파일만 올릴 수 있어요."); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{
+    try{
+      let wb;
+      if(ext==="csv"){
+        const buf=new Uint8Array(fr.result); let text;
+        try{ text=new TextDecoder("utf-8",{fatal:true}).decode(buf); }
+        catch(_){ text=new TextDecoder("euc-kr").decode(buf); } // 한글 윈도우 엑셀에서 저장한 CSV
+        text=text.replace(/^﻿/,"");
+        wb=XLSX.read(text,{type:"string",raw:true});
+      } else wb=XLSX.read(fr.result,{type:"array"});
+      let aoa=null;
+      for(const n of wb.SheetNames){
+        const a=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:"",raw:true,blankrows:false});
+        if(a.length>=2){aoa=a;break;}
+      }
+      if(!aoa){ showErr(k,"파일 안에 데이터가 없어요. 첫 줄에는 열 이름, 둘째 줄부터 데이터를 넣어 주세요."); return; }
+      loadAoa(k,aoa,file.name);
+      toast(`${k==="A"?"정제 전":"정제 후"} 데이터 "${file.name}"을(를) 불러왔어요!`);
+    }catch(err){ console.error(err); showErr(k,"파일을 읽는 중 문제가 생겼어요. 파일이 손상되지 않았는지 확인해 주세요."); }
+  };
+  fr.readAsArrayBuffer(file);
+}
+function showErr(k,msg){ const e=$("ferr"+k); e.textContent="⚠ "+msg; e.classList.remove("hidden"); }
+
+function loadAoa(k,aoa,name){
+  const width=Math.max(...aoa.map(r=>r.length));
+  const seen={};
+  const headers=Array.from({length:width},(_,j)=>{
+    let h=String(aoa[0][j]??"").trim()||`열 ${j+1}`;
+    if(seen[h]){ seen[h]++; h=`${h} (${seen[h]})`; } else seen[h]=1;
+    return h;
+  });
+  const rows=aoa.slice(1).map(r=>Array.from({length:width},(_,j)=>r[j]??""))
+                 .filter(r=>r.some(v=>String(v).trim()!==""));
+  // 열 자동 선택
+  const numScore=j=>rows.reduce((s,r)=>s+(parseNum(r[j])!=null?1:0),0);
+  let x=headers.findIndex(h=>/신발|발\s*크기|발사이즈|shoe|foot/i.test(h));
+  let y=headers.findIndex((h,j)=>j!==x&&/키|신장|height|tall/i.test(h));
+  const numCols=headers.map((_,j)=>j).filter(j=>numScore(j)>0 && !/번호|^no$|id/i.test(headers[j])).sort((a,b)=>numScore(b)-numScore(a));
+  if(x<0) x=numCols.find(j=>j!==y)??0;
+  if(y<0) y=numCols.find(j=>j!==x)??Math.min(1,width-1);
+  const nameCol=headers.findIndex(h=>/이름|name|학생/i.test(h));
+  S[k]={name,headers,rows,x,y,nameCol};
+  const opts=headers.map((h,j)=>`<option value="${j}">${esc(h)}</option>`).join("");
+  $("xs"+k).innerHTML=opts; $("ys"+k).innerHTML=opts;
+  $("xs"+k).value=x; $("ys"+k).value=y;
+  const d=$("drop"+k); d.classList.add("loaded");
+  $("dropT"+k).textContent="📄 "+name; $("dropS"+k).textContent=`${rows.length}행 · 다른 파일로 바꾸려면 클릭`;
+  $("body"+k).classList.remove("hidden");
+  refresh(k);
+}
+
+/* ================= 분석 ================= */
+function analyze(k){
+  const d=S[k]; if(!d) return null;
+  const bad=new Set(), pts=[];
+  d.rows.forEach((r,i)=>{
+    const xv=parseNum(r[d.x]), yv=parseNum(r[d.y]);
+    if(xv==null) bad.add(i+":"+d.x);
+    if(yv==null) bad.add(i+":"+d.y);
+    if(xv!=null&&yv!=null) pts.push({x:xv,y:yv,i});
+  });
+  const [xl,xh]=iqrBounds(pts.map(p=>p.x)), [yl,yh]=iqrBounds(pts.map(p=>p.y));
+  const outCells=new Set();
+  pts.forEach(p=>{
+    p.outX=p.x<xl||p.x>xh; p.outY=p.y<yl||p.y>yh; p.out=p.outX||p.outY;
+    if(p.outX) outCells.add(p.i+":"+d.x); if(p.outY) outCells.add(p.i+":"+d.y);
+  });
+  const n=pts.length; let r=null,a=null,b=null;
+  if(n>=2){
+    const mx=pts.reduce((s,p)=>s+p.x,0)/n, my=pts.reduce((s,p)=>s+p.y,0)/n;
+    let sxy=0,sxx=0,syy=0;
+    pts.forEach(p=>{const dx=p.x-mx,dy=p.y-my; sxy+=dx*dy; sxx+=dx*dx; syy+=dy*dy;});
+    if(sxx>0){ a=sxy/sxx; b=my-a*mx; }
+    if(sxx>0&&syy>0) r=sxy/Math.sqrt(sxx*syy);
+  }
+  const excluded=d.rows.length-n;
+  return {pts,bad,outCells,n,excluded,outliers:pts.filter(p=>p.out).length,r,a,b,
+          xmin:n?Math.min(...pts.map(p=>p.x)):null,xmax:n?Math.max(...pts.map(p=>p.x)):null};
+}
+function interpret(r,X="X",Y="Y"){
+  if(r==null) return {lvl:"계산 불가",msg:"숫자 데이터가 2개 이상 필요해요."};
+  const a=Math.abs(r), pos=r>0;
+  if(a>=0.7) return {lvl:pos?"함께 커지는 관계 (강함)":"반대로 움직이는 관계 (강함)",
+    msg:pos?`💪 ${X}이(가) 클수록 ${Y}도 커요.`:`💪 ${X}이(가) 클수록 ${Y}은(는) 작아져요.`};
+  if(a>=0.4) return {lvl:pos?"함께 커지는 관계 (보통)":"반대로 움직이는 관계 (보통)",
+    msg:pos?`👍 ${X}이(가) 클수록 ${Y}도 큰 편이에요.`:`👍 ${X}이(가) 클수록 ${Y}은(는) 작은 편이에요.`};
+  if(a>=0.2) return {lvl:pos?"함께 커지는 관계 (약함)":"반대로 움직이는 관계 (약함)",
+    msg:"🤏 점들이 많이 흩어져 있어요."};
+  return {lvl:"관계가 거의 없음",
+    msg:"🤷 관계를 찾기 어려워요. 오류가 섞여 있진 않나요?"};
+}
+
+/* ================= 화면 갱신 ================= */
+function refresh(k){
+  const d=S[k]; d.res=analyze(k);
+  $("cw"+k).classList.toggle("hidden",d.x!==d.y);
+  renderTable(k); renderStats(k); drawChart(k); updatePredict(); renderSummary();
+  // 두 그래프는 같은 축 범위를 쓰므로 다른 쪽도 다시 그림
+  const o=k==="A"?"B":"A"; if(S[o]) drawChart(o);
+}
+function renderTable(k){
+  const d=S[k], res=d.res, LIM=300;
+  const validRows=new Set(res.pts.map(p=>p.i));
+  let h=`<table><thead><tr><th class="rn">행</th>${d.headers.map((x,j)=>`<th>${esc(x)}${j===d.x?'<span class="ax">X</span>':""}${j===d.y?'<span class="ax">Y</span>':""}</th>`).join("")}</tr></thead><tbody>`;
+  d.rows.slice(0,LIM).forEach((r,i)=>{
+    h+=`<tr class="${validRows.has(i)?"":"excl"}"><td class="rn">${i+2}</td>`;
+    r.forEach((v,j)=>{
+      const key=i+":"+j; let cls="";
+      if(j===d.x||j===d.y){
+        if(res.bad.has(key)) cls="bad"; else if(res.outCells.has(key)) cls="out";
+      }
+      if(parseNum(v)!=null) cls+=" n";
+      const title=cls.includes("bad")?(String(v).trim()===""?"빈칸이라 계산에서 빠져요":"숫자가 아니라서 계산에서 빠져요"):cls.includes("out")?"다른 값들과 너무 동떨어진 값이에요":"";
+      h+=`<td class="${cls}" ${title?`title="${title}"`:""}>${String(v).trim()===""?"&nbsp;(빈칸)":esc(v)}</td>`;
+    });
+    h+="</tr>";
+  });
+  h+="</tbody></table>";
+  if(d.rows.length>LIM) h+=`<div class="more">처음 ${LIM}행만 보여 줘요. (전체 ${d.rows.length}행은 모두 계산에 사용돼요)</div>`;
+  $("tw"+k).innerHTML=h;
+}
+function renderStats(k){
+  const d=S[k], r=d.res;
+  $("stats"+k).innerHTML=`
+    <div class="st"><div class="k">✅ 계산에 쓴 데이터</div><div class="v hl">${r.n}<small style="font-size:13px"> 개</small></div></div>
+    <div class="st"><div class="k">❌ 오류로 빠진 데이터</div><div class="v ${r.excluded?"red":""}">${r.excluded}<small style="font-size:13px"> 개</small></div></div>
+    <div class="st"><div class="k">⚠️ 이상치 의심</div><div class="v ${r.outliers?"yel":""}">${r.outliers}<small style="font-size:13px"> 개</small></div></div>`;}
+
+/* ================= 그래프 ================= */
+Chart.defaults.color="#9db0d4";
+Chart.defaults.font.family='"Noto Sans KR", sans-serif';
+/* 축 범위: 정상 데이터가 있는 곳에 맞춰 정해요.
+   1660cm·2700mm처럼 터무니없는 값까지 축에 넣으면 점들이 바닥에 납작하게 깔리기 때문이에요.
+   그런 값은 그래프 가장자리에 붙여서 표시해요. 두 그래프는 항상 같은 축 범위를 써요. */
+function niceRange(lo,hi){
+  const span=(hi-lo)||Math.abs(hi)||1, raw=span*1.1/6, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const step=[1,2,5,10].map(m=>m*mag).find(v=>v>=raw);
+  let a=Math.floor((lo-span*.04)/step)*step, b=Math.ceil((hi+span*.04)/step)*step;
+  if(lo>=0&&a<0) a=0; return [a,b];
+}
+function axisRange(){
+  const all={x:[],y:[]}, norm={x:[],y:[]};
+  ["A","B"].forEach(k=>{ const d=S[k]; if(!d||!d.res) return;
+    d.res.pts.forEach(p=>{ all.x.push(p.x); all.y.push(p.y); if(!p.outX) norm.x.push(p.x); if(!p.outY) norm.y.push(p.y); }); });
+  if(!all.x.length) return null;
+  const extra={x:[],y:[]};
+  if(S.myX!=null){ extra.x.push(S.myX); ["A","B"].forEach(k=>{const pr=predOf(k); if(pr!=null) extra.y.push(pr);}); }
+  const range=ax=>{
+    const base=norm[ax].length?norm[ax]:all[ax];
+    const lo=Math.min(...base), hi=Math.max(...base), s=(hi-lo)||Math.abs(hi)||1;
+    // 정상 범위 가까이에 있는 값(살짝 큰/작은 값, 내 예측 ★)은 축에 포함하고, 아주 멀리 떨어진 값만 뺌
+    const near=all[ax].concat(extra[ax]).filter(v=>v>=lo-s*.5&&v<=hi+s*.5);
+    return niceRange(Math.min(lo,...near),Math.max(hi,...near));
+  };
+  const [x0,x1]=range("x"), [y0,y1]=range("y");
+  return {x0,x1,y0,y1};
+}
+function predOf(k){ const d=S[k]; if(!d||!d.res||d.res.a==null||S.myX==null) return null; return d.res.a*S.myX+d.res.b; }
+function drawChart(k){
+  if(charts[k]){charts[k].destroy();charts[k]=null;}
+  const d=S[k], sd=SIDES[k];
+  const has=d&&d.res&&d.res.n>0;
+  $("ce"+k).classList.toggle("hidden",!!has);
+  $("cn"+k).classList.add("hidden");
+  if(!has) return;
+  const r=d.res, xn=d.headers[d.x], yn=d.headers[d.y];
+  const sr=axisRange();
+  const cx=v=>Math.min(sr.x1,Math.max(sr.x0,v)), cy=v=>Math.min(sr.y1,Math.max(sr.y0,v));
+  const nm=i=>d.nameCol>=0?String(d.rows[i][d.nameCol]):"";
+  // 축 밖 값은 가장자리(cx, cy)에 붙여 그리고, 실제 값(rx, ry)은 따로 기억
+  const mk=p=>({x:cx(p.x),y:cy(p.y),rx:p.x,ry:p.y,i:p.i,nm:nm(p.i),off:cx(p.x)!==p.x||cy(p.y)!==p.y});
+  const ds=[
+    {label:"데이터",data:r.pts.filter(p=>!p.out).map(mk),backgroundColor:sd.ptFill,borderColor:sd.pt,pointRadius:5.5,pointHoverRadius:8,order:3,clip:false},
+  ];
+  if(r.outliers) ds.push({label:"이상치 의심",data:r.pts.filter(p=>p.out).map(mk),backgroundColor:"rgba(250,204,21,.85)",borderColor:"#fff",borderWidth:1.5,pointRadius:7,pointHoverRadius:10,pointStyle:"rectRot",order:2,clip:false});
+  const pr=predOf(k);
+  if(trendOn[k]&&r.a!=null){
+    let lo=Math.max(r.xmin,sr.x0),hi=Math.min(r.xmax,sr.x1);
+    if(pr!=null){lo=Math.min(lo,cx(S.myX));hi=Math.max(hi,cx(S.myX));}
+    if(lo<hi) ds.push({label:"추세선",data:[{x:lo,y:r.a*lo+r.b},{x:hi,y:r.a*hi+r.b}],showLine:true,borderColor:sd.line,borderWidth:2.5,borderDash:[7,5],pointRadius:0,pointHoverRadius:0,fill:false,order:4,isTrend:true});
+  }
+  if(pr!=null) ds.push({label:"내 예측",data:[{x:cx(S.myX),y:cy(pr),rx:S.myX,ry:pr,off:cx(S.myX)!==S.myX||cy(pr)!==pr}],pointStyle:"star",pointRadius:16,pointHoverRadius:19,borderWidth:3,borderColor:"#ffffff",backgroundColor:sd.pt,order:1,isPred:true,clip:false});
+  const nClip=r.pts.filter(p=>cx(p.x)!==p.x||cy(p.y)!==p.y).length;
+  if(nClip){
+    $("cn"+k).textContent=`⚠ 그래프 밖으로 나가는 값 ${nClip}개는 가장자리에 표시했어요.`;
+    $("cn"+k).classList.remove("hidden");
+  }
+  charts[k]=new Chart($("cv"+k),{
+    type:"scatter",data:{datasets:ds},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:450},
+      plugins:{
+        legend:{labels:{usePointStyle:true,boxWidth:8,padding:14,font:{size:12}}},
+        tooltip:{backgroundColor:"#0b1222",borderColor:sd.pt,borderWidth:1,padding:10,titleFont:{weight:"700"},
+          filter:it=>!it.dataset.isTrend,
+          callbacks:{
+            title:items=>{const it=items[0],p=it.raw; if(it.dataset.isPred) return "★ 내 신발 사이즈로 예측한 값"; return `${p.nm?p.nm+" · ":""}표의 ${p.i+2}행${it.dataset.label==="이상치 의심"?" (이상치 의심)":""}`;},
+            label:it=>[`${short(xn)}: ${fmt(it.raw.rx,1)}`,`${short(yn)}: ${fmt(it.raw.ry,1)}`],
+            afterLabel:it=>it.raw.off?"(그래프 밖 값이라 가장자리에 표시했어요)":""
+          }}
+      },
+      scales:{
+        x:{title:{display:true,text:"X축 · "+xn,color:"#c9d6f0",font:{weight:"700"}},grid:{color:"rgba(80,100,150,.18)"},min:sr.x0,max:sr.x1,ticks:{font:{family:"JetBrains Mono"}}},
+        y:{title:{display:true,text:"Y축 · "+yn,color:"#c9d6f0",font:{weight:"700"}},grid:{color:"rgba(80,100,150,.18)"},min:sr.y0,max:sr.y1,ticks:{font:{family:"JetBrains Mono"}}}
+      }
+    }
+  });
+}
+
+/* ================= 비교 요약 ================= */
+function renderSummary(){
+  const box=$("summary");
+  const A=S.A?.res, B=S.B?.res;
+  if(!A||!B){box.classList.add("hidden");return;}
+  box.classList.remove("hidden");
+  const la=interpret(A.r).lvl, lb=interpret(B.r).lvl;
+  box.innerHTML=`<h2>📋 정제 전 vs 정제 후 비교 요약</h2>
+    <div class="sgrid">
+      <div class="scard"><div class="k">두 값의 관계</div><div class="v" style="font-size:17px;font-family:'Noto Sans KR'"><span class="ca">${la}</span><span class="arrow">→</span><span class="cb">${lb}</span></div></div>
+      <div class="scard"><div class="k">계산에 쓴 데이터 수</div><div class="v"><span class="ca">${A.n}</span><span class="arrow">→</span><span class="cb">${B.n}</span> <small>개</small></div></div>
+      <div class="scard"><div class="k">오류 + 이상치 의심</div><div class="v"><span class="ca">${A.excluded+A.outliers}</span><span class="arrow">→</span><span class="cb">${B.excluded+B.outliers}</span> <small>개</small></div></div>
+    </div>`;
+}
+
+/* ================= 키 예측 ================= */
+function updatePredict(){
+  const xH=(S.B||S.A)?.headers[(S.B||S.A).x]||"신발사이즈(mm)";
+  $("myShoeUnit").textContent=unitOf(xH)||"";
+  const note=$("pnote"); note.classList.add("hidden");
+  const notes=[];
+  if(S.myX!=null&&/신발|발|shoe/i.test(xH)&&/mm/i.test(xH)&&(S.myX<150||S.myX>350))
+    notes.push(`🤔 신발 사이즈로 너무 ${S.myX<150?"작아요. mm로 적어 주세요 (예: 255)":"커요. 0을 하나 더 적었나요?"}`);
+  const ref=S.B?.res||S.A?.res;
+  if(S.myX!=null&&ref&&ref.n&&(S.myX<ref.xmin||S.myX>ref.xmax)&&!notes.length)
+    notes.push(`📐 데이터 범위(${fmt(ref.xmin,1)} ~ ${fmt(ref.xmax,1)}) 밖이라 예측이 부정확할 수 있어요.`);
+  if(notes.length){note.innerHTML=notes.join("<br>");note.classList.remove("hidden");}
+  const preds={};
+  ["A","B"].forEach(k=>{
+    const d=S[k], big=$("pred"+k), how=$("how"+k), ok=$("ok"+k);
+    ok.textContent="";
+    if(!d){big.textContent="—";how.textContent=`데이터 ${k}를 올려 주세요`;return;}
+    const r=d.res, yu=unitOf(d.headers[d.y]);
+    if(r.a==null){big.textContent="—";how.textContent="추세선을 만들 수 없어요";return;}
+    if(S.myX==null){big.textContent="—";how.textContent="신발 사이즈를 넣어 주세요";return;}
+    const p=r.a*S.myX+r.b; preds[k]=p;
+    big.innerHTML=`${fmt(p,1)} <small>${esc(yu)}</small>`;
+    how.textContent="";
+    if(/키|신장|height/i.test(d.headers[d.y])){
+      ok.innerHTML=(p<120||p>200)?`<span style="color:var(--err)">😵 중학생 키로는 이상해요</span>`
+                                  :`<span style="color:#7ef0c5">🙆 그럴듯한 예측이에요</span>`;
+    }
+  });
+}
+function doPredict(){
+  const v=parseNum($("myShoe").value);
+  if(v==null){ if($("myShoe").value.trim()!=="") toast("숫자로 입력해 주세요!"); S.myX=null; }
+  else S.myX=v;
+  if(S.myX!=null&&!S.A&&!S.B) toast("먼저 데이터 파일을 올리거나 샘플 데이터를 불러와 주세요!");
+  updatePredict(); drawChart("A"); drawChart("B");
+}
+$("btnPredict").addEventListener("click",doPredict);
+$("myShoe").addEventListener("keydown",e=>{if(e.key==="Enter")doPredict();});
+$("myShoe").addEventListener("input",()=>{clearTimeout(doPredict._t);doPredict._t=setTimeout(doPredict,350);});
+$("btnClearPredict").addEventListener("click",()=>{$("myShoe").value="";S.myX=null;updatePredict();drawChart("A");drawChart("B");});
+
+/* ================= 샘플 · 양식 · 초기화 ================= */
+$("btnSample").addEventListener("click",()=>{
+  const {raw,clean}=buildSample();
+  loadAoa("A",raw,"샘플_정제전_원본.xlsx");
+  loadAoa("B",clean,"샘플_정제후.xlsx");
+  $("cleanBody").innerHTML=SAMPLE_ISSUES.map(s=>`<tr><td class="num">${s[0]}번</td><td class="num" style="color:#ff9fb0">${s[2]===""?"(빈칸)":esc(s[2])}</td><td>${esc(s[3])}</td><td><span class="tagp ${s[5]===null?"del":"fix"}">${s[5]===null?"삭제":"수정"}</span> ${esc(s[4])}</td></tr>`).join("");
+  $("cleanlog").classList.remove("hidden");
+  toast("샘플 데이터를 양쪽에 불러왔어요! 빨간 칸과 노란 칸을 찾아보세요 🔍");
+  $("summary").scrollIntoView({behavior:"smooth",block:"start"});
+});
+
+let dlNS; // claude 다운로드 기능(있으면)
+if(window.claude&&window.claude.use){ window.claude.use("downloads").then(n=>dlNS=n).catch(()=>{}); }
+async function saveFile(filename,blob){
+  if(dlNS){
+    try{ await dlNS.save({filename,data:blob}); toast("양식 파일을 저장했어요!"); return; }
+    catch(e){ if(e&&e.code==="declined") return; }
+  }
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  toast("양식 파일 다운로드를 시작했어요!");
+}
+$("btnTemplate").addEventListener("click",()=>{
+  if(typeof XLSX==="undefined"){toast("엑셀 도구를 불러오지 못했어요. 새로고침해 주세요.");return;}
+  const ws=XLSX.utils.aoa_to_sheet([HEAD,[1,"학생01",250,165],[2,"학생02",235,156],[3,"학생03",265,172]]);
+  ws["!cols"]=[{wch:6},{wch:10},{wch:16},{wch:10}];
+  const guide=XLSX.utils.aoa_to_sheet([["작성 방법"],["1. '데이터' 시트의 첫 줄(열 이름)은 그대로 두세요."],["2. 둘째 줄부터 한 사람당 한 줄씩 입력해요."],["3. 신발 사이즈는 mm 단위(예: 250), 키는 cm 단위(예: 165) 숫자로만 적어요."],["4. 예시 3줄은 지우고 우리 반 데이터를 넣어 보세요."]]);
+  guide["!cols"]=[{wch:70}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"데이터"); XLSX.utils.book_append_sheet(wb,guide,"작성방법");
+  const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  saveFile("신발사이즈_키_조사양식.xlsx",new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+});
+$("btnReset").addEventListener("click",()=>{
+  ["A","B"].forEach(k=>{
+    S[k]=null; if(charts[k]){charts[k].destroy();charts[k]=null;}
+    $("body"+k).classList.add("hidden"); $("ferr"+k).classList.add("hidden");
+    $("drop"+k).classList.remove("loaded");
+    $("dropT"+k).textContent="파일을 끌어다 놓거나 클릭하세요"; $("dropS"+k).textContent=".xlsx · .xls · .csv";
+    $("ce"+k).classList.remove("hidden");
+  });
+  $("myShoe").value=""; S.myX=null; $("cleanlog").classList.add("hidden");
+  renderSummary(); updatePredict(); toast("처음 상태로 돌아왔어요.");
+});
+updatePredict();
+</script>
+</body>
+</html>
